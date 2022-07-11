@@ -956,101 +956,118 @@ Now some Nano related customizations.
 
 Nano Modeline should include Projectile project name
 #+begin_src emacs-lisp
-      (defun ii/nano-modeline-maybe-set-project ()
-        (let ((project (projectile-project-name)))
-          (if (> (length project) 1)
-              (propertize (concat " ◊ " project) 'face 'italic))))
+(defun ii/nano-modeline-maybe-set-project ()
+  (let ((project (projectile-project-name)))
+    (if (> (length project) 1)
+        (propertize (concat " ◊ " project) 'face 'italic))))
 
-      (defun ii/nano-modeline-default-mode ()
-        (if lsp-mode
-            (ii/nano-modeline-default-mode-lsp)
-          (ii/nano-modeline-default-mode-nolsp)))
+(defun ii/nano-modeline-default-mode ()
+  (if lsp-mode
+      (ii/nano-modeline-default-mode-lsp)
+    (ii/nano-modeline-default-mode-nolsp)))
 
-      (defun ii/nano-modeline-default-mode-nolsp ()
-        "Default modeline, LSP not enabled."
-        (let* ((buffer-name (format-mode-line "%b"))
-               (mode-name   (nano-mode-name))
-               (project     (ii/nano-modeline-maybe-set-project))
-               (branch      (vc-branch))
-               (position    (format-mode-line "%l:%c %p"))
-               (b-title     (if branch
-                                (concat ", " (propertize branch 'face 'italic)))))
-          (nano-modeline-compose (nano-modeline-status)
-                                 buffer-name
-                                 (concat "(" mode-name b-title ")" project)
-                                 position)))
+(defun ii/buffer-position ()
+  (let ((pos (format-mode-line "%l:%c %p")))
+    (if (s-ends-with-p "%" pos)
+        (concat pos "%")
+      pos)))
 
-      (defun ii/nano-modeline-default-mode-lsp ()
-        "Default modeline, steal components from lsp-headerline."
-        (let* ((buffer-name (format-mode-line "%b"))
-               (mode-name   (nano-mode-name))
-               (project     (ii/nano-modeline-maybe-set-project))
-               (branch      (vc-branch))
-               (position    (format-mode-line "%l:%c %p"))
-               (b-title     (if branch
-                                (concat ", " (propertize branch 'face 'italic)))))
-          (ii/nano-modeline-compose (nano-modeline-status)
-                                    (lsp-headerline--build-file-string)
-                                    (concat " (" mode-name b-title ")" project)
-                                    (lsp-headerline--build-symbol-string)
-                                    position)))
+(defun ii/nano-modeline-default-mode-nolsp ()
+  "Default modeline, LSP not enabled."
+  (let* ((buffer-name (if (or (fancy-narrow-active-p) (buffer-narrowed-p))
+                          (format-mode-line "%b…")
+                        (format-mode-line "%b")))
+         (mode-name   (nano-mode-name))
+         (project     (ii/nano-modeline-maybe-set-project))
+         (branch      (vc-branch))
+         (position    (ii/buffer-position))
+         (b-title     (if branch
+                          (concat ", " (propertize branch 'face 'italic)))))
+    (nano-modeline-compose (nano-modeline-status)
+                           buffer-name
+                           (concat "(" mode-name b-title ")" project)
+                           position)))
+
+(defun ii/nano-modeline-default-mode-lsp ()
+  "Default modeline, steal components from lsp-headerline."
+  (let* ((mode-name   (nano-mode-name))
+         (project     (ii/nano-modeline-maybe-set-project))
+         (branch      (vc-branch))
+         (position    (ii/buffer-position))
+         (b-title     (if branch
+                          (concat ", " (propertize branch 'face 'italic)))))
+    (ii/nano-modeline-compose
+     (nano-modeline-status)
+     (let* ((filename  (lsp-headerline--build-file-string))
+           (buffername (if (eq filename "")
+                           (propertize (format-mode-line "%b")
+                                       'face 'nano-face-header-default)
+                         filename))
+           (indicator  (if (or (fancy-narrow-active-p) (buffer-narrowed-p))
+                           (propertize "…" 'face 'nano-face-header-default)
+                         "")))
+       (concat buffername indicator))
+     (concat " (" mode-name b-title ", LSP)" project)
+     (lsp-headerline--build-symbol-string)
+     position)))
 
 
-    (defun ii/nano-modeline-compose (status name primary secondary pos)
-    "Custom replacement for nano-modeline-compose."
-    (let* ((char-width    (window-font-width nil 'header-line))
-           (window        (get-buffer-window (current-buffer)))
-           (space-up       +0.15)
-           (space-down     -0.20)
-           (end-space (propertize " "  'face 'nano-face-header-default
-                                  'display `(raise ,space-up)))
-           (prefix (cond ((string= status "RO")
-                          (propertize (if (window-dedicated-p)" -- " " RO ")
-                                      'face 'nano-face-header-popout))
-                         ((string= status "**")
-                          (propertize (if (window-dedicated-p)" -- " " ** ")
-                                      'face 'nano-face-header-critical))
-                         ((string= status "RW")
-                          (propertize (if (window-dedicated-p)" -- " " RW ")
-                                      'face 'nano-face-header-faded))
-                         (t (propertize status 'face 'nano-face-header-popout))))
-           (left (concat
-                  (propertize " "  'face 'nano-face-header-default
-                              'display `(raise ,space-up))
-                  (ii/hack-lsp-symbol-string name)
-                  (propertize " "  'face 'nano-face-header-default
-                              'display `(raise ,space-down))
-                  (propertize primary 'face 'nano-face-header-default)))
-           (right (concat
-                   (ii/hack-lsp-symbol-string secondary)
-                   (propertize (concat " " pos)
-                               'face `(:inherit nano-face-header-default
-                                                :foreground ,nano-color-faded))))
-           (available-width (- (window-total-width)
-                               (length prefix) (length left) (length right)
-                               (length end-space)
-                               (/ (window-right-divider-width) char-width)))
-           (available-width (max 1 available-width)))
-      (concat prefix
-              left
-              (propertize (make-string available-width ?\ )
-                          'face 'nano-face-header-default)
-              right
-              end-space)))
+(defun ii/nano-modeline-compose (status name primary secondary pos)
+  "Custom replacement for nano-modeline-compose."
+  (let* ((char-width    (window-font-width nil 'header-line))
+         (window        (get-buffer-window (current-buffer)))
+         (space-up       +0.15)
+         (space-down     -0.20)
+         (position       pos)
+         (end-space (propertize " "  'face 'nano-face-header-default
+                                'display `(raise ,space-up)))
+         (prefix (cond ((string= status "RO")
+                        (propertize (if (window-dedicated-p)" -- " " RO ")
+                                    'face 'nano-face-header-popout))
+                       ((string= status "**")
+                        (propertize (if (window-dedicated-p)" -- " " ** ")
+                                    'face 'nano-face-header-critical))
+                       ((string= status "RW")
+                        (propertize (if (window-dedicated-p)" -- " " RW ")
+                                    'face 'nano-face-header-faded))
+                       (t (propertize status 'face 'nano-face-header-popout))))
+         (left (concat
+                (propertize " "  'face 'nano-face-header-default
+                            'display `(raise ,space-up))
+                (ii/hack-lsp-symbol-string name)
+                (propertize " "  'face 'nano-face-header-default
+                            'display `(raise ,space-down))
+                (propertize primary 'face 'nano-face-header-default)))
+         (right (concat
+                 (ii/hack-lsp-symbol-string secondary)
+                 (propertize (concat " " position)
+                             'face `(:inherit nano-face-header-default
+                                              :foreground ,nano-color-faded))))
+         (available-width (- (window-total-width)
+                             (length prefix) (length left) (length right)
+                             (length end-space)
+                             (/ (window-right-divider-width) char-width)))
+         (available-width (max 1 available-width)))
+    (concat prefix
+            left
+            (propertize (make-string available-width ?\ )
+                        'face 'nano-face-header-default)
+            right
+            end-space)))
 
-  (defun ii/hack-lsp-symbol-string (symbol)
-    "Reformat the symbol string for Nano's header line."
-    (if (or (not symbol) (= 0 (length symbol)))
-        ""
-      (let* ((trimmed (s-trim symbol))
-             (space (propertize " " 'face 'nano-face-header-default))
-             (unspaced (replace-regexp-in-string
-                        " +\\([^ ]+\\) +"
-                        (concat space "\\1" space)
-                        trimmed)))
-        unspaced)))
+(defun ii/hack-lsp-symbol-string (symbol)
+  "Reformat the symbol string for Nano's header line."
+  (if (or (not symbol) (= 0 (length symbol)))
+      ""
+    (let* ((trimmed (s-trim symbol))
+           (space (propertize " " 'face 'nano-face-header-default))
+           (unspaced (replace-regexp-in-string
+                      " +\\([^ ]+\\) +"
+                      (concat space "\\1" space)
+                      trimmed)))
+      unspaced)))
 
-        (fset 'nano-modeline-default-mode 'ii/nano-modeline-default-mode)
+(fset 'nano-modeline-default-mode 'ii/nano-modeline-default-mode)
 
 #+end_src
 
