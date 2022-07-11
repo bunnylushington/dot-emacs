@@ -27,6 +27,15 @@ bts for integration with gitlab?
   (setq warning-minimum-level :error)
 #+end_src
 
+* Convenience
+#+begin_src emacs-lisp
+  (defun ii/emacs-dir-file (file)
+    (expand-file-name file user-emacs-directory))
+
+  (defun ii/home-dir-file (file)
+    (expand-file-name file (getenv "HOME")))
+#+end_src
+
 * Packages
 #+begin_src emacs-lisp
   (require 'package)
@@ -176,7 +185,7 @@ bts for integration with gitlab?
   (setenv "PATH"
           (concat "/usr/local/bin:/opt/homebrew/bin:" (getenv "PATH")))
 
-  (add-to-list 'load-path "/Users/bunnylushington/.emacs.d/nano-emacs")
+  (add-to-list 'load-path (ii/emacs-dir-file "nano-emacs"))
 #+end_src
 
 ** Info Initialization
@@ -495,7 +504,7 @@ that I'd consider absurd but we like to play nice.
 nxo-mode provides some integration among Erlang, SQL (and eqlite), and
 Projectile modes.
 #+begin_src emacs-lisp
-  (load-file "~/.emacs.d/nxo.el")
+  (load-file (ii/emacs-dir-file "nxo.el")
   (nxo-mode)
 #+end_src
 
@@ -511,7 +520,7 @@ Projectile modes.
   (require 'org-journal)
 
   (setq
-   org-default-notes-file "~CloudDocs/org-mode/notes.org"
+   org-default-notes-file "~/CloudDocs/org-mode/notes.org"
 
    org-agenda-files (list "~/CloudDocs/org-mode")
 
@@ -886,7 +895,7 @@ See https://tinyurl.com/yxs3z6dq
 # mu index
 
 #+begin_src emacs-lisp
-  (setq mu4e-config-file "~/.emacs.d/ii-mu4e.el"
+  (setq mu4e-config-file (ii/emacs-dir-file "ii-mu4e.el")
         configure-mu4e-p (if (file-readable-p mu4e-config-file) 't nil))
     (if configure-mu4e-p (load-file mu4e-config-file))
 #+end_src
@@ -943,9 +952,9 @@ Now some Nano related customizations.
   (setcdr (assq 'internal-border-width default-frame-alist) 12)
 
   ;; Session
-  (setq backup-directory-alist '((".*" . "~/.emacs.d/.backups"))
+  (setq backup-directory-alist `((".*" . ,(ii/emacs-dir-file ".backups")))
         vc-make-backup-files t
-        bookmark-default-file "~/.emacs.d/bookmarks"
+        bookmark-default-file (ii/emacs-dir-file "bookmarks")
         backup-enable-predicate (lambda (name) t))
 
   ;; Face tweaks
@@ -956,119 +965,7 @@ Now some Nano related customizations.
 
 Nano Modeline should include Projectile project name
 #+begin_src emacs-lisp
-(defun ii/nano-modeline-maybe-set-project ()
-  (let ((project (projectile-project-name)))
-    (if (> (length project) 1)
-        (propertize (concat " ◊ " project) 'face 'italic))))
-
-(defun ii/nano-modeline-default-mode ()
-  (if lsp-mode
-      (ii/nano-modeline-default-mode-lsp)
-    (ii/nano-modeline-default-mode-nolsp)))
-
-(defun ii/buffer-position ()
-  (let ((pos (format-mode-line "%l:%c %p")))
-    (if (s-ends-with-p "%" pos)
-        (concat pos "%")
-      pos)))
-
-(defun ii/nano-modeline-default-mode-nolsp ()
-  "Default modeline, LSP not enabled."
-  (let* ((buffer-name (if (or (fancy-narrow-active-p) (buffer-narrowed-p))
-                          (format-mode-line "%b…")
-                        (format-mode-line "%b")))
-         (mode-name   (nano-mode-name))
-         (project     (ii/nano-modeline-maybe-set-project))
-         (branch      (vc-branch))
-         (position    (ii/buffer-position))
-         (b-title     (if branch
-                          (concat ", " (propertize branch 'face 'italic)))))
-    (nano-modeline-compose (nano-modeline-status)
-                           buffer-name
-                           (concat "(" mode-name b-title ")" project)
-                           position)))
-
-(defun ii/nano-modeline-default-mode-lsp ()
-  "Default modeline, steal components from lsp-headerline."
-  (let* ((mode-name   (nano-mode-name))
-         (project     (ii/nano-modeline-maybe-set-project))
-         (branch      (vc-branch))
-         (position    (ii/buffer-position))
-         (b-title     (if branch
-                          (concat ", " (propertize branch 'face 'italic)))))
-    (ii/nano-modeline-compose
-     (nano-modeline-status)
-     (let* ((filename  (lsp-headerline--build-file-string))
-           (buffername (if (eq filename "")
-                           (propertize (format-mode-line "%b")
-                                       'face 'nano-face-header-default)
-                         filename))
-           (indicator  (if (or (fancy-narrow-active-p) (buffer-narrowed-p))
-                           (propertize "…" 'face 'nano-face-header-default)
-                         "")))
-       (concat buffername indicator))
-     (concat " (" mode-name b-title ", LSP)" project)
-     (lsp-headerline--build-symbol-string)
-     position)))
-
-
-(defun ii/nano-modeline-compose (status name primary secondary pos)
-  "Custom replacement for nano-modeline-compose."
-  (let* ((char-width    (window-font-width nil 'header-line))
-         (window        (get-buffer-window (current-buffer)))
-         (space-up       +0.15)
-         (space-down     -0.20)
-         (position       pos)
-         (end-space (propertize " "  'face 'nano-face-header-default
-                                'display `(raise ,space-up)))
-         (prefix (cond ((string= status "RO")
-                        (propertize (if (window-dedicated-p)" -- " " RO ")
-                                    'face 'nano-face-header-popout))
-                       ((string= status "**")
-                        (propertize (if (window-dedicated-p)" -- " " ** ")
-                                    'face 'nano-face-header-critical))
-                       ((string= status "RW")
-                        (propertize (if (window-dedicated-p)" -- " " RW ")
-                                    'face 'nano-face-header-faded))
-                       (t (propertize status 'face 'nano-face-header-popout))))
-         (left (concat
-                (propertize " "  'face 'nano-face-header-default
-                            'display `(raise ,space-up))
-                (ii/hack-lsp-symbol-string name)
-                (propertize " "  'face 'nano-face-header-default
-                            'display `(raise ,space-down))
-                (propertize primary 'face 'nano-face-header-default)))
-         (right (concat
-                 (ii/hack-lsp-symbol-string secondary)
-                 (propertize (concat " " position)
-                             'face `(:inherit nano-face-header-default
-                                              :foreground ,nano-color-faded))))
-         (available-width (- (window-total-width)
-                             (length prefix) (length left) (length right)
-                             (length end-space)
-                             (/ (window-right-divider-width) char-width)))
-         (available-width (max 1 available-width)))
-    (concat prefix
-            left
-            (propertize (make-string available-width ?\ )
-                        'face 'nano-face-header-default)
-            right
-            end-space)))
-
-(defun ii/hack-lsp-symbol-string (symbol)
-  "Reformat the symbol string for Nano's header line."
-  (if (or (not symbol) (= 0 (length symbol)))
-      ""
-    (let* ((trimmed (s-trim symbol))
-           (space (propertize " " 'face 'nano-face-header-default))
-           (unspaced (replace-regexp-in-string
-                      " +\\([^ ]+\\) +"
-                      (concat space "\\1" space)
-                      trimmed)))
-      unspaced)))
-
-(fset 'nano-modeline-default-mode 'ii/nano-modeline-default-mode)
-
+(load-file (ii/emacs-dir-file "custom-modeline.el"))
 #+end_src
 
 
