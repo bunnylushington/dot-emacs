@@ -504,7 +504,7 @@ that I'd consider absurd but we like to play nice.
 nxo-mode provides some integration among Erlang, SQL (and eqlite), and
 Projectile modes.
 #+begin_src emacs-lisp
-  (load-file (ii/emacs-dir-file "nxo.el")
+  (load-file (ii/emacs-dir-file "nxo.el"))
   (nxo-mode)
 #+end_src
 
