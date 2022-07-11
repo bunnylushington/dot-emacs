@@ -66,10 +66,15 @@ bts for integration with gitlab?
             column-enforce-mode
             com-css-sort
             command-log-mode
+            corfu
             csv
             csv-mode
+            cyberpunk-theme
+            dad-joke
+            dap-mode
             dash-at-point
             diff-hl
+            dilbert
             dired-imenu
             dired-rainbow
             distel-completion-lib
@@ -80,8 +85,6 @@ bts for integration with gitlab?
             docker-compose-mode
             dockerfile-mode
             dumb-jump
-            edbi
-            edbi-minor-mode
             edts
             eglot
             eglot-java
@@ -94,15 +97,24 @@ bts for integration with gitlab?
             elm-mode
             emamux
             erlang
+            exec-path-from-shell
+            fancy-narrow
             filladapt
+            flx
+            flx-ido
+            flx-isearch
             flycheck
             fontawesome
             ggtags
             gh
             gh-md
+            ghub+
+            git-link
             git-timemachine
             gitlab
+            go-imenu
             go-mode
+            go-snippets
             grip-mode
             haskell-mode
             helm-lsp
@@ -110,7 +122,9 @@ bts for integration with gitlab?
             hiwin
             hyperbole
             ido-completing-read+
+            ido-grid-mode
             ido-hacks
+            ido-vertical-mode
             imenu-list
             impatient-mode
             jinja2-mode
@@ -126,17 +140,18 @@ bts for integration with gitlab?
             magit
             magit-todos
             markdown-mode
-            markdown-mode+
             markdown-preview-mode
             md4rd
             messages-are-flowing
             mmm-mode
             mu4e-views
             multi-vterm
+            noaa
             nov
             open-junk-file
             org-journal
             org-modern
+            osx-dictionary
             outline-magic
             persp-projectile
             perspective
@@ -148,24 +163,35 @@ bts for integration with gitlab?
             quick-buffer-switch
             restclient
             restclient-test
+            reveal-in-osx-finder
             salt-mode
             scss-mode
+            side-hustle
             slack
+            smart-comment
             smartparens
+            so-long
+            ssh
+            ssh-config-mode
             svg-tag-mode
             term-projectile
             tramp
             treemacs-projectile
             undo-tree
+            use-package
+            uuidgen
+            vertico
             vterm
             vterm-toggle
+            web-mode
             which-key
             window-number
             wttrin
             yaml
             yasnippet
             yasnippet-snippets
-            ztree)))
+            ztree
+            )))
     (when (memq window-system '(mac ns))
       (push 'exec-path-from-shell packages)
       (push 'reveal-in-osx-finder packages))
